@@ -1,0 +1,1120 @@
+{
+	"info": {
+		"_postman_id": "b132836a-8d72-4bde-89b5-5ce98244fb19",
+		"name": "test suite",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "create agent",
+			"item": [
+				{
+					"name": "create agent",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "baabc375-6d66-48f4-ae57-2fdb6890dc20",
+								"exec": [
+									"if(pm.environment.get(\"cli_usage\") == \"false\") {",
+									"    pm.sendRequest(\"http://localhost:8185/\", (err, res) => { ",
+									"        ",
+									"        var data = JSON.parse(res.text());                 // aws/credentials ",
+									"        pm.environment.set(\"access_key\", data['Key'])      // aws_access_key_id",
+									"        pm.environment.set(\"secret_key\", data['Secret'])   // aws_secret_access_key",
+									"        pm.environment.set(\"session_token\", data['Token']) // aws_session_token",
+									"    });",
+									"}",
+									"pm.environment.set(\"api_key_valid\", \"false\");",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "6583d20f-12c4-4d43-bd0f-b019081f9c8e",
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"agent_id\", jsonData.id);",
+									"postman.setEnvironmentVariable(\"api_key\", jsonData.apikey);",
+									"",
+									"pm.test(\"response must be valid and have a body\", function () {",
+									"     pm.response.to.be.ok;",
+									"     pm.response.to.be.json;",
+									"});",
+									"",
+									"",
+									"",
+									"",
+									"var api = pm.environment.get(\"api_url\");",
+									"const testRequest = {",
+									"  url: api+'/query/dataid/fakedataid',",
+									"  method: 'GET',",
+									"  header: 'x-api-key:'+pm.environment.get(\"api_key\"),",
+									"};",
+									"",
+									"pm.environment.set(\"attempts\", \"0\");",
+									"var updateFunc = function() {",
+									"    var attempts = parseInt(pm.environment.get(\"attempts\"));",
+									"    var key_valid = pm.environment.get(\"api_key_valid\");",
+									"    if (key_valid == \"true\") return;",
+									"    pm.sendRequest(testRequest, (err, res) => {",
+									"        if (res.code != 403) {",
+									"            pm.environment.set(\"api_key_valid\", \"true\");",
+									"            pm.expect(\"test\").to.eql(\"test\")",
+									"            return",
+									"        }",
+									"        attempts++",
+									"        if (attempts > 100) {",
+									"            pm.expect(\"test\").to.eql(\"not\")",
+									"            throw new Error(\"api key did not activate\")",
+									"            return;",
+									"        }",
+									"        pm.environment.set(\"attempts\", attempts);",
+									"        setTimeout(updateFunc, 1000);",
+									"    });",
+									"}",
+									"",
+									"updateFunc();"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "awsv4",
+							"awsv4": [
+								{
+									"key": "sessionToken",
+									"value": "{{session_token}}",
+									"type": "string"
+								},
+								{
+									"key": "secretKey",
+									"value": "{{secret_key}}",
+									"type": "string"
+								},
+								{
+									"key": "accessKey",
+									"value": "{{access_key}}",
+									"type": "string"
+								},
+								{
+									"key": "service",
+									"value": "execute-api",
+									"type": "string"
+								},
+								{
+									"key": "region",
+									"value": "eu-west-1",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"agent\":\n    {\n        \"ID\":\"postman-test\",\n        \"name\":\"postman-test\",\n        \"email\":\"datafabric@meteogroup.com\",\n        \"team\":\"datafabric\"\n    },\n    \"rules\": {\n        \"datafabric\": [\n            {\n                \"datasetname\": \"*\",\n                \"list\": true,\n                \"write\": true,\n                \"get\": true\n            }\n        ]\n    }\n}"
+						},
+						"url": {
+							"raw": "{{api_url}}/rbac/agent",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"rbac",
+								"agent"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "subscription tests",
+			"item": [
+				{
+					"name": "create subscription",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "c005aaad-48e9-4547-982d-313ebfd97a0b",
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"if (jsonData.result) {",
+									"    postman.setEnvironmentVariable(\"subscription_id\", jsonData.result.id);",
+									"}",
+									"// example using pm.response.to.be*",
+									"pm.test(\"response must be valid and have a body\", function () {",
+									"",
+									"    var jsonData = pm.response.json();",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.json;",
+									"    pm.expect(jsonData.result.Active).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "x-api-key",
+								"type": "text",
+								"value": "{{api_key}}"
+							},
+							{
+								"key": "",
+								"type": "text",
+								"value": "",
+								"disabled": true
+							},
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"Active\": true,\n    \"DatasetName\": \"*\",\n    \"EventSubject\": \"*:abandoned\",\n    \"TopicARN\": \"arn:aws:sns:eu-west-1:576899322567:erwin-mesh-test\"\n}"
+						},
+						"url": {
+							"raw": "{{api_url}}/sub",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"sub"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete subscription",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "23eb07ef-7427-418a-b005-ba043fec1276",
+								"exec": [
+									"pm.test(\"delete succeeded\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.text).to.eql(\"ok\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-api-key",
+								"type": "text",
+								"value": "{{api_key}}"
+							},
+							{
+								"key": "",
+								"type": "text",
+								"value": "",
+								"disabled": true
+							},
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/sub/{{subscription_id}}",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"sub",
+								"{{subscription_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "successful upload test",
+			"item": [
+				{
+					"name": "announce data",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "7f95eba7-c103-4b16-bace-1fea2d57ffc2",
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"if (jsonData.accepted && jsonData.uploadTarget.storagetype == \"s3\") {",
+									"    postman.setEnvironmentVariable(\"s3_put_url\", jsonData.uploadTarget.s3url);",
+									"}",
+									"postman.setEnvironmentVariable(\"dataID\", jsonData.dataID);",
+									"",
+									"// example using pm.response.to.be*",
+									"pm.test(\"response must be valid and have a body\", function () {",
+									"",
+									"    var jsonData = pm.response.json();",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.json;",
+									"    pm.expect(jsonData.accepted).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-api-key",
+								"type": "text",
+								"value": "{{api_key}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ttl\": \"10m\",\n    \"metadata\": {\n        \"datasetname\": \"wavewatch_global_30min\",\n        \"datafiletype\": \"netcdf\",\n        \"datafilename\": \"201906270600/mg/wavewatch/global/30min/st2/gfs/wavewatch_global_30min_st2_gfs_fields_20190627_0600_t0m1.nc\",\n        \"parameters\": [\n            \"t0m1\"\n        ],\n        \"timeframe\": {\n            \"issuetime\": \"2019-06-27T09:42:28Z\",\n            \"validtime\": [\n                \"2019-06-27T09:00:00.000Z\"\n            ],\n            \"step\": [\"30m\"]\n        },\n        \"source\": {\n            \"ID\": \"s3://mg-metocean-processing-production-model-output\",\n            \"description\": \"mg-metocean-processing-production-model-output\"\n        },\n        \"process\": {\n            \"ID\": \"github.com/MeteoGroup/hpc-suites\",\n            \"description\": \"WST Nautical hpc-suites repo. s3://configuration bucket.\"\n        },\n        \"setmetadata \": {}\n    }\n}"
+						},
+						"url": {
+							"raw": "{{api_url}}/announce",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"announce"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "query data (announced)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "7f95eba7-c103-4b16-bace-1fea2d57ffc2",
+								"exec": [
+									"",
+									"pm.test(\"response must be valid and have a body\", function () {",
+									"",
+									"    var jsonData = pm.response.json();",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.json;",
+									"    pm.expect(jsonData.computed.currentstate).to.eql(\"announced\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"type": "text",
+								"value": "{{api_key}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{api_url}}/query/dataid/{{dataID}}",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"query",
+								"dataid",
+								"{{dataID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "upload to S3",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "7f688bda-57ad-4b22-86f9-061121015fb5",
+								"exec": [
+									"pm.test(\"response must be valid and have no body\", function () {",
+									"     pm.response.to.be.ok;",
+									"});",
+									"",
+									"//allow sns and cotton to update this",
+									"setTimeout(function(){}, 1500);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "test"
+						},
+						"url": {
+							"raw": "{{s3_put_url}}",
+							"host": [
+								"{{s3_put_url}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "query data (uploaded)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "7f95eba7-c103-4b16-bace-1fea2d57ffc2",
+								"exec": [
+									"",
+									"pm.test(\"response must be valid and have a body\", function () {",
+									"",
+									"    var jsonData = pm.response.json();",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.json;",
+									"    pm.expect(jsonData.computed.currentstate).to.eql(\"uploaded\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"type": "text",
+								"value": "{{api_key}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{api_url}}/query/dataid/{{dataID}}",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"query",
+								"dataid",
+								"{{dataID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get presigned retrieve url",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "7f95eba7-c103-4b16-bace-1fea2d57ffc2",
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"if (jsonData.storagetype == \"s3\") {",
+									"    postman.setEnvironmentVariable(\"s3_get_url\", jsonData.s3url);",
+									"}",
+									"",
+									"// example using pm.response.to.be*",
+									"pm.test(\"response must be valid and have a body\", function () {",
+									"",
+									"    var jsonData = pm.response.json();",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.json;",
+									"    pm.expect(jsonData.storagetype).to.eql(\"s3\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"type": "text",
+								"value": "{{api_key}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{api_url}}/retrieve/{{dataID}}",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"retrieve",
+								"{{dataID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET from S3",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "7f688bda-57ad-4b22-86f9-061121015fb5",
+								"exec": [
+									"pm.test(\"response must be valid and have no body\", function () {",
+									"     pm.response.to.be.ok;",
+									"    pm.expect(responseBody).to.eql(\"test\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{s3_get_url}}",
+							"host": [
+								"{{s3_get_url}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "query data (should have retrieval)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "7f95eba7-c103-4b16-bace-1fea2d57ffc2",
+								"exec": [
+									"",
+									"pm.test(\"response must be valid and have a body\", function () {",
+									"",
+									"    var jsonData = pm.response.json();",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.json;",
+									"    pm.expect(jsonData.computed.currentstate).to.eql(\"uploaded\");",
+									"    pm.expect(jsonData.computed.retrievalcount).to.eql(1);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"type": "text",
+								"value": "{{api_key}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{api_url}}/query/dataid/{{dataID}}",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"query",
+								"dataid",
+								"{{dataID}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "abandoned upload test",
+			"item": [
+				{
+					"name": "announce data",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "7f95eba7-c103-4b16-bace-1fea2d57ffc2",
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"if (jsonData.accepted && jsonData.uploadTarget.storagetype == \"s3\") {",
+									"    postman.setEnvironmentVariable(\"s3_put_url\", jsonData.uploadTarget.s3url);",
+									"}",
+									"postman.setEnvironmentVariable(\"dataID\", jsonData.dataID);",
+									"",
+									"// example using pm.response.to.be*",
+									"pm.test(\"response must be valid and have a body\", function () {",
+									"",
+									"    var jsonData = pm.response.json();",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.json;",
+									"    pm.expect(jsonData.accepted).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-api-key",
+								"type": "text",
+								"value": "{{api_key}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ttl\": \"1s\",\n    \"metadata\": {\n        \"datasetname\": \"wavewatch_global_30min\",\n        \"datafiletype\": \"netcdf\",\n        \"datafilename\": \"201906270600/mg/wavewatch/global/30min/st2/gfs/wavewatch_global_30min_st2_gfs_fields_20190627_0600_t0m1.nc\",\n        \"parameters\": [\n            \"t0m1\"\n        ],\n        \"timeframe\": {\n            \"issuetime\": \"2019-06-27T09:42:28Z\",\n            \"validtime\": [\n                \"2019-06-27T09:00:00.000Z\"\n            ],\n            \"step\": [\"30m\"]\n        },\n        \"source\": {\n            \"ID\": \"s3://mg-metocean-processing-production-model-output\",\n            \"description\": \"mg-metocean-processing-production-model-output\"\n        },\n        \"process\": {\n            \"ID\": \"github.com/MeteoGroup/hpc-suites\",\n            \"description\": \"WST Nautical hpc-suites repo. s3://configuration bucket.\"\n        },\n        \"setmetadata \": {}\n    }\n}"
+						},
+						"url": {
+							"raw": "{{api_url}}/announce",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"announce"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "query data (abandoned)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "7f95eba7-c103-4b16-bace-1fea2d57ffc2",
+								"exec": [
+									"",
+									"pm.test(\"response must be valid and have a body\", function () {",
+									"",
+									"    var jsonData = pm.response.json();",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.json;",
+									"    pm.expect(jsonData.computed.currentstate).to.eql(\"abandoned\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "3063631e-b8b9-484b-8265-5a13660b6693",
+								"exec": [
+									"    var sleepFunc = function() {",
+									"        //this does nothing, is mainly intended to delay the next request",
+									"        console.log(\"sleeping..\")",
+									"    }",
+									"    setTimeout(sleepFunc, 1000);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"type": "text",
+								"value": "{{api_key}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{api_url}}/query/dataid/{{dataID}}",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"query",
+								"dataid",
+								"{{dataID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get presigned retrieve url",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "7f95eba7-c103-4b16-bace-1fea2d57ffc2",
+								"exec": [
+									"pm.test(\"response must not found\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"type": "text",
+								"value": "{{api_key}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{api_url}}/retrieve/{{dataID}}?",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"retrieve",
+								"{{dataID}}"
+							],
+							"query": [
+								{
+									"key": "ttl",
+									"value": "2h",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "malformed requests",
+			"item": [
+				{
+					"name": "announce data without JSON",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "7f95eba7-c103-4b16-bace-1fea2d57ffc2",
+								"exec": [
+									"pm.test(\"response must not found\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-api-key",
+								"type": "text",
+								"value": "{{api_key}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "this definitely is no json"
+						},
+						"url": {
+							"raw": "{{api_url}}/announce",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"announce"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "announce data invalid TTL",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "7f95eba7-c103-4b16-bace-1fea2d57ffc2",
+								"exec": [
+									"pm.test(\"response must not found\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-api-key",
+								"type": "text",
+								"value": "{{api_key}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ttl\": \"one day\",\n    \"metadata\": {\n        \"datasetname\": \"wavewatch_global_30min\",\n        \"datafiletype\": \"netcdf\",\n        \"datafilename\": \"201906270600/mg/wavewatch/global/30min/st2/gfs/wavewatch_global_30min_st2_gfs_fields_20190627_0600_t0m1.nc\",\n        \"parameters\": [\n            \"t0m1\"\n        ],\n        \"timeframe\": {\n            \"issuetime\": \"2019-06-27T09:42:28Z\",\n            \"validtime\": [\n                \"2019-06-27T09:00:00.000Z\"\n            ],\n            \"step\": [\"30m\"]\n        },\n        \"source\": {\n            \"ID\": \"s3://mg-metocean-processing-production-model-output\",\n            \"description\": \"mg-metocean-processing-production-model-output\"\n        },\n        \"process\": {\n            \"ID\": \"github.com/MeteoGroup/hpc-suites\",\n            \"description\": \"WST Nautical hpc-suites repo. s3://configuration bucket.\"\n        },\n        \"setmetadata \": {}\n    }\n}"
+						},
+						"url": {
+							"raw": "{{api_url}}/announce",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"announce"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "query data invalid dataID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "7f95eba7-c103-4b16-bace-1fea2d57ffc2",
+								"exec": [
+									"pm.test(\"response must not found\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"type": "text",
+								"value": "{{api_key}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{api_url}}/query/dataid/askdlfjaslkdfj",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"query",
+								"dataid",
+								"askdlfjaslkdfj"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get presigned retrieve url invalid TTL",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "7f95eba7-c103-4b16-bace-1fea2d57ffc2",
+								"exec": [
+									"pm.test(\"response must not found\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"type": "text",
+								"value": "{{api_key}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{api_url}}/retrieve/{{dataID}}?ttl=asdf",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"retrieve",
+								"{{dataID}}"
+							],
+							"query": [
+								{
+									"key": "ttl",
+									"value": "asdf",
+									"description": "invalid ttl"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "delete agent",
+			"item": [
+				{
+					"name": "delete agent",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "b1e55d19-ea18-43b0-93b0-4be948caff58",
+								"exec": [
+									"pm.test(\"delete succeeded\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.text).to.eql(\"ok\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "641be072-1f68-45e4-a6f0-1143904acbbe",
+								"exec": [
+									"if(pm.environment.get(\"cli_usage\") == \"false\") {",
+									"    pm.sendRequest(\"http://localhost:8184/\", (err, res) => { ",
+									"",
+									"        var data = JSON.parse(res.text());",
+									"        pm.environment.set(\"access_key\", data['Key'])",
+									"        pm.environment.set(\"secret_key\", data['Secret'])",
+									"        pm.environment.set(\"session_token\", data['Token'])",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "awsv4",
+							"awsv4": [
+								{
+									"key": "sessionToken",
+									"value": "{{session_token}}",
+									"type": "string"
+								},
+								{
+									"key": "secretKey",
+									"value": "{{secret_key}}",
+									"type": "string"
+								},
+								{
+									"key": "accessKey",
+									"value": "{{access_key}}",
+									"type": "string"
+								},
+								{
+									"key": "service",
+									"value": "execute-api",
+									"type": "string"
+								},
+								{
+									"key": "region",
+									"value": "eu-west-1",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/rbac/agent/{{agent_id}}",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"rbac",
+								"agent",
+								"{{agent_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
